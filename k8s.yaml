@@ -1,0 +1,79 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+   name: kube-apps
+   labels:
+     name: kube-apps
+
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: rustapp-deploy
+  namespace: kube-apps
+  labels:
+    k8s-app: rustappk8s
+spec:
+  replicas: 2
+  revisionHistoryLimit: 10
+  minReadySeconds: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        k8s-app: rustappk8s
+    spec:
+      containers:
+      - image: sergeyjay/actix-web:latest
+        imagePullPolicy: IfNotPresent
+        name: rustappk8s
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        resources:
+          limits:
+            cpu: 100m
+            memory: 100Mi
+          requests:
+            cpu: 50m
+            memory: 50Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rustapp-svc
+  namespace: kube-apps
+  labels:
+    k8s-app: rustappk8s
+spec:
+  type: NodePort
+  ports:
+    - name: api
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+      nodePort: 30224
+  selector:
+    k8s-app: rustappk8s
+
+# ---
+# apiVersion: extensions/v1beta1
+# kind: Ingress
+# metadata:
+#   name: rustapp-ingress
+#   namespace: kube-apps
+# spec:
+#   rules:
+#   - host: rustappk8s.local
+#     http:
+#       paths:
+#       - path: /
+#         backend:
+#           serviceName: rustapp-svc
+#           servicePort: api
